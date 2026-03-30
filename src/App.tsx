@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { CurrentDuty } from './components/CurrentDuty';
 import { RulesBoard } from './components/RulesBoard';
+import { Reminder } from './components/Reminder';
 import { Sidebar } from './components/Sidebar';
 import type { UpcomingDuty } from './components/Sidebar';
 import { EditModal } from './components/EditModal';
@@ -44,9 +45,14 @@ function App() {
     const currentIndex = ((weeksElapsed % students.length) + students.length) % students.length;
     const currentStudentName = students[currentIndex].name;
 
+    // Friday date (Monday + 4 days)
+    const fridayDate = new Date(baseDate);
+    fridayDate.setDate(fridayDate.getDate() + weeksElapsed * 7 + 4);
+    const fridayDisplay = `${fridayDate.getMonth() + 1}/${fridayDate.getDate()}`;
+
     // Upcoming list
     const upcomingList: UpcomingDuty[] = [];
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 10; i++) {
         const targetWeek = weeksElapsed + i;
         const studentIndex = ((targetWeek % students.length) + students.length) % students.length;
         upcomingList.push({
@@ -59,6 +65,7 @@ function App() {
         currentDateDisplay,
         currentWeekRange,
         currentStudentName,
+        fridayDisplay,
         upcomingList
     };
   }, [students, now, baseDate]);
@@ -78,24 +85,27 @@ function App() {
         onLogout={logout}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
           <CurrentDuty
             weekRangeDisplay={stateData.currentWeekRange}
             currentStudentName={stateData.currentStudentName}
+            fridayDate={stateData.fridayDisplay}
           />
           <RulesBoard
             rules={rules}
             isAdmin={isAdmin}
             onSave={updateRules}
           />
+          <Reminder
+            reminder={reminder}
+            isAdmin={isAdmin}
+            onSaveReminder={updateReminder}
+          />
         </div>
 
         <Sidebar
           upcomingList={stateData.upcomingList}
-          reminder={reminder}
-          isAdmin={isAdmin}
-          onSaveReminder={updateReminder}
         />
       </div>
 
