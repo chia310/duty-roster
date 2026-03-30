@@ -6,27 +6,15 @@ import { Sidebar } from './components/Sidebar';
 import type { UpcomingDuty } from './components/Sidebar';
 import { EditModal } from './components/EditModal';
 import { getInitialMonday, getWeeksDiff, getWeekRangeString } from './utils/dateHelpers';
-
-const DEFAULT_STUDENTS = ["陳小明", "林美玲", "張大華", "李小龍", "王大明", "趙子龍", "黃蓉", "郭靖", "孫悟空", "周杰倫"];
+import { useAuth } from './hooks/useAuth';
+import { useFirestore } from './hooks/useFirestore';
+import type { Student } from './types';
 
 function App() {
-  const [students, setStudents] = useState<string[]>([]);
+  const { user, isAdmin, login, logout } = useAuth();
+  const { students, rules, reminder, loading, updateStudents, updateRules, updateReminder } = useFirestore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [now, setNow] = useState(new Date());
-
-  // 初始化名單
-  useEffect(() => {
-    const saved = localStorage.getItem('duty_roster_students');
-    if (saved) {
-      try {
-        setStudents(JSON.parse(saved));
-      } catch {
-        setStudents(DEFAULT_STUDENTS);
-      }
-    } else {
-      setStudents(DEFAULT_STUDENTS);
-    }
-  }, []);
 
   // 更新時間
   useEffect(() => {
@@ -36,27 +24,26 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSaveStudents = (newList: string[]) => {
-    setStudents(newList);
-    localStorage.setItem('duty_roster_students', JSON.stringify(newList));
+  const handleSaveStudents = async (newList: Student[]) => {
+    await updateStudents(newList);
   };
 
   const baseDate = useMemo(() => getInitialMonday(), []);
-  
+
   const stateData = useMemo(() => {
     if (students.length === 0) return null;
-    
+
     const weeksElapsed = getWeeksDiff(now, baseDate);
-    
+
     // Header data
     const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
     const currentDateDisplay = `今日是：${now.toLocaleDateString('zh-TW', dateOptions)}`;
-    
+
     // Current duty data
     const currentWeekRange = getWeekRangeString(baseDate, weeksElapsed);
     const currentIndex = ((weeksElapsed % students.length) + students.length) % students.length;
-    const currentStudentName = students[currentIndex];
-    
+    const currentStudentName = students[currentIndex].name;
+
     // Upcoming list
     const upcomingList: UpcomingDuty[] = [];
     for (let i = 1; i <= 5; i++) {
@@ -64,7 +51,7 @@ function App() {
         const studentIndex = ((targetWeek % students.length) + students.length) % students.length;
         upcomingList.push({
             range: getWeekRangeString(baseDate, targetWeek),
-            name: students[studentIndex]
+            name: students[studentIndex].name
         });
     }
 
@@ -76,38 +63,51 @@ function App() {
     };
   }, [students, now, baseDate]);
 
-  if (!stateData) {
+  if (loading || !stateData) {
       return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-indigo-500 font-bold">載入中...</div>;
   }
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
-      <Header 
-        currentDateDisplay={stateData.currentDateDisplay} 
-        onEditClick={() => setIsModalOpen(true)} 
+      <Header
+        currentDateDisplay={stateData.currentDateDisplay}
+        onEditClick={() => setIsModalOpen(true)}
+        isAdmin={isAdmin}
+        user={user}
+        onLogin={login}
+        onLogout={logout}
       />
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <CurrentDuty 
-            weekRangeDisplay={stateData.currentWeekRange} 
-            currentStudentName={stateData.currentStudentName} 
+          <CurrentDuty
+            weekRangeDisplay={stateData.currentWeekRange}
+            currentStudentName={stateData.currentStudentName}
           />
-          <RulesBoard />
+          <RulesBoard
+            rules={rules}
+            isAdmin={isAdmin}
+            onSave={updateRules}
+          />
         </div>
-        
-        <Sidebar upcomingList={stateData.upcomingList} />
+
+        <Sidebar
+          upcomingList={stateData.upcomingList}
+          reminder={reminder}
+          isAdmin={isAdmin}
+          onSaveReminder={updateReminder}
+        />
       </div>
 
       <footer className="mt-12 text-center text-slate-400 text-sm">
         班級自動化管理系統 • 智慧輪替 React 版
       </footer>
 
-      <EditModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSave={handleSaveStudents} 
-        currentStudents={students} 
+      <EditModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveStudents}
+        currentStudents={students}
       />
     </div>
   );
