@@ -67,7 +67,7 @@ function sendMondayReminder() {
   var data = getFirestoreConfig();
   if (!data) return;
 
-  var student = getCurrentDutyStudent(data.students);
+  var student = getCurrentDutyStudent(data.students, data.startDate);
   if (!student || !student.email) {
     Logger.log('當週值日生沒有設定 email，跳過寄信。值日生：' + (student ? student.name : '無'));
     return;
@@ -105,7 +105,7 @@ function sendFridayReminder() {
   var data = getFirestoreConfig();
   if (!data) return;
 
-  var student = getCurrentDutyStudent(data.students);
+  var student = getCurrentDutyStudent(data.students, data.startDate);
   if (!student || !student.email) {
     Logger.log('當週值日生沒有設定 email，跳過寄信。值日生：' + (student ? student.name : '無'));
     return;
@@ -140,6 +140,7 @@ function sendFridayReminder() {
 /**
  * 從 Firestore 讀取 config/main 文件
  * students 格式：[{ name: "姓名", email: "xxx@gmail.com" }, ...]
+ * startDate 格式：'2026-03-30'（週一，第一位值日生的起始週）
  */
 function getFirestoreConfig() {
   var url = 'https://firestore.googleapis.com/v1/projects/' +
@@ -165,7 +166,13 @@ function getFirestoreConfig() {
       return { name: v.stringValue || '', email: '' };
     });
 
-    return { students: students };
+    // 讀取 startDate（若沒設定，預設 2026-03-30）
+    var startDate = fields.startDate && fields.startDate.stringValue
+      ? new Date(fields.startDate.stringValue)
+      : new Date('2026-03-30');
+    startDate.setHours(0, 0, 0, 0);
+
+    return { students: students, startDate: startDate };
   } catch (e) {
     Logger.log('讀取 Firestore 失敗：' + e.message);
     return null;
@@ -176,15 +183,15 @@ function getFirestoreConfig() {
  * 計算本週值日生（與前端邏輯一致）
  * 回傳 { name, email } 物件
  */
-function getCurrentDutyStudent(students) {
+function getCurrentDutyStudent(students, startDate) {
   if (!students || students.length === 0) return null;
 
   var now = new Date();
-  var baseDate = getMonday(now);
-  var epoch = new Date(2025, 0, 6); // 2025-01-06 週一作為基準點
-  var weeksDiff = Math.round((baseDate.getTime() - epoch.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  var thisMonday = getMonday(now);
+  var weeksDiff = Math.round((thisMonday.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
   var index = ((weeksDiff % students.length) + students.length) % students.length;
 
+  Logger.log('thisMonday=' + thisMonday + ', startDate=' + startDate + ', weeksDiff=' + weeksDiff + ', index=' + index);
   return students[index];
 }
 

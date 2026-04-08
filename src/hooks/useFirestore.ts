@@ -22,10 +22,12 @@ interface FirestoreData {
   students: Student[];
   rules: string[];
   reminder: string;
+  startDate: Date;
   loading: boolean;
   updateStudents: (students: Student[]) => Promise<void>;
   updateRules: (rules: string[]) => Promise<void>;
   updateReminder: (reminder: string) => Promise<void>;
+  updateStartDate: (date: Date) => Promise<void>;
 }
 
 const CONFIG_DOC = doc(db, 'config', 'main');
@@ -34,6 +36,7 @@ export function useFirestore(): FirestoreData {
   const [students, setStudents] = useState<Student[]>(DEFAULT_STUDENTS);
   const [rules, setRules] = useState<string[]>(DEFAULT_RULES);
   const [reminder, setReminder] = useState<string>(DEFAULT_REMINDER);
+  const [startDate, setStartDate] = useState<Date>(new Date('2026-03-30'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,6 +57,7 @@ export function useFirestore(): FirestoreData {
         }
         if (data.rules?.length) setRules(data.rules);
         if (data.reminder) setReminder(data.reminder);
+        if (data.startDate) setStartDate(new Date(data.startDate));
       }
       setLoading(false);
     }, () => {
@@ -78,5 +82,9 @@ export function useFirestore(): FirestoreData {
     await updateDoc(CONFIG_DOC, { reminder: newReminder });
   };
 
-  return { students, rules, reminder, loading, updateStudents, updateRules, updateReminder };
+  const updateStartDate = async (date: Date) => {
+    await updateDoc(CONFIG_DOC, { startDate: date.toISOString().split('T')[0] });
+  };
+
+  return { students, rules, reminder, startDate, loading, updateStudents, updateRules, updateReminder, updateStartDate };
 }

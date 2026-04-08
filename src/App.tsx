@@ -6,14 +6,14 @@ import { Reminder } from './components/Reminder';
 import { Sidebar } from './components/Sidebar';
 import type { UpcomingDuty } from './components/Sidebar';
 import { EditModal } from './components/EditModal';
-import { getInitialMonday, getWeeksDiff, getWeekRangeString } from './utils/dateHelpers';
+import { getWeeksDiff, getWeekRangeString } from './utils/dateHelpers';
 import { useAuth } from './hooks/useAuth';
 import { useFirestore } from './hooks/useFirestore';
 import type { Student } from './types';
 
 function App() {
   const { user, isAdmin, login, logout } = useAuth();
-  const { students, rules, reminder, loading, updateStudents, updateRules, updateReminder } = useFirestore();
+  const { students, rules, reminder, startDate, loading, updateStudents, updateRules, updateReminder } = useFirestore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [now, setNow] = useState(new Date());
 
@@ -29,7 +29,12 @@ function App() {
     await updateStudents(newList);
   };
 
-  const baseDate = useMemo(() => getInitialMonday(), []);
+  // baseDate 是固定錨點日（第一位值日生的週一），從 Firestore 讀取
+  const baseDate = useMemo(() => {
+    const d = new Date(startDate);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [startDate]);
 
   const stateData = useMemo(() => {
     if (students.length === 0) return null;
