@@ -98,7 +98,7 @@ function sendMondayReminder() {
 
   Logger.log('週一提醒已寄出給 ' + student.name + '（' + student.email + '）');
 
-  sendChatCard(student.name, student.email, weekRange, false);
+  sendChatCard(student.name, weekRange, false);
 }
 
 /**
@@ -134,7 +134,7 @@ function sendFridayReminder() {
 
   Logger.log('週五提醒已寄出給 ' + student.name + '（' + student.email + '）');
 
-  sendChatCard(student.name, student.email, getThisWeekRange(), true);
+  sendChatCard(student.name, getThisWeekRange(), true);
 }
 
 // ============ 輔助函數 ============
@@ -225,7 +225,7 @@ function getThisWeekRange() {
 /**
  * 發送 Google Chat 卡片通知
  */
-function sendChatCard(studentName, studentEmail, weekRange, isFriday) {
+function sendChatCard(studentName, weekRange, isFriday) {
   var title = isFriday ? '週五大掃除提醒' : '本週值日生提醒';
   var subtitle = weekRange;
   var body = isFriday
@@ -236,7 +236,6 @@ function sendChatCard(studentName, studentEmail, weekRange, isFriday) {
     : '1. 本週五下午五點前，將公共垃圾（辦公室＋廁所）拿到樓梯間，往五樓方向移動的垃圾集中處。\n2. 確認公共空間狀況，是否有紙箱需要回收或協助清理。';
 
   var card = {
-    text: '<users/' + studentEmail + '>',
     cardsV2: [{
       cardId: 'duty-reminder',
       card: {
