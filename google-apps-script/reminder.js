@@ -31,7 +31,7 @@ var CONFIG = {
   SENDER_NAME: '值日生系統',
 
   // Google Chat Webhook URL
-  CHAT_WEBHOOK_URL: 'https://chat.googleapis.com/v1/spaces/AAQAqWtRO_Y/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=d74tU7U9tJR03Tr9bQ-bur1uqgb5on9L8oCLVAYQLRQ'
+  CHAT_WEBHOOK_URL: 'https://chat.googleapis.com/v1/spaces/AAAAqHVBRTE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=1eovnDTvqxfT5UG4w3rblTT9MzvvFx3mJTEgomMPuoQ'
 };
 
 // ============ 主要函數 ============
