@@ -50,7 +50,7 @@ export function useFirestore(): FirestoreData {
           // 相容舊格式：如果是 string[] 就轉換為 Student[]
           const raw = data.students;
           if (typeof raw[0] === 'string') {
-            setStudents(raw.map((name: string) => ({ name, email: '' })));
+            setStudents(raw.map((name: string) => ({ name, email: '', chatUserId: '' })));
           } else {
             setStudents(raw as Student[]);
           }
@@ -71,7 +71,7 @@ export function useFirestore(): FirestoreData {
   }, []);
 
   const updateStudents = async (newStudents: Student[]) => {
-    await setDoc(CONFIG_DOC, { students: newStudents.map(s => ({ name: s.name, email: s.email })) }, { merge: true });
+    await setDoc(CONFIG_DOC, { students: newStudents.map(s => ({ name: s.name, email: s.email, chatUserId: s.chatUserId || '' })) }, { merge: true });
   };
 
   const updateRules = async (newRules: string[]) => {

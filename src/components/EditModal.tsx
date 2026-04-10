@@ -19,14 +19,14 @@ export const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, c
 
   if (!isOpen) return null;
 
-  const handleChange = (index: number, field: 'name' | 'email', value: string) => {
+  const handleChange = (index: number, field: 'name' | 'email' | 'chatUserId', value: string) => {
     const updated = [...editList];
     updated[index] = { ...updated[index], [field]: value };
     setEditList(updated);
   };
 
   const handleAdd = () => {
-    setEditList([...editList, { name: '', email: '' }]);
+    setEditList([...editList, { name: '', email: '', chatUserId: '' }]);
   };
 
   const handleRemove = (index: number) => {
@@ -36,7 +36,7 @@ export const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, c
   const handleSave = () => {
     const filtered = editList.filter(s => s.name.trim() !== '');
     if (filtered.length > 0) {
-      onSave(filtered.map(s => ({ name: s.name.trim(), email: s.email.trim() })));
+      onSave(filtered.map(s => ({ name: s.name.trim(), email: s.email.trim(), chatUserId: (s.chatUserId || '').trim() })));
       onClose();
     } else {
       alert("請至少輸入一個姓名！");
@@ -57,28 +57,39 @@ export const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, c
         </div>
         <div className="p-6 max-h-[50vh] overflow-y-auto space-y-3">
           {editList.map((student, idx) => (
-            <div key={idx} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl">
-              <span className="text-slate-400 text-sm font-bold w-6 text-center">{idx + 1}</span>
-              <input
-                type="text"
-                value={student.name}
-                onChange={(e) => handleChange(idx, 'name', e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 text-sm"
-                placeholder="姓名"
-              />
-              <input
-                type="email"
-                value={student.email}
-                onChange={(e) => handleChange(idx, 'email', e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 text-sm"
-                placeholder="email（選填）"
-              />
-              <button
-                onClick={() => handleRemove(idx)}
-                className="text-slate-300 hover:text-red-400 transition-colors p-1"
-              >
-                <i className="fa-solid fa-xmark"></i>
-              </button>
+            <div key={idx} className="bg-slate-50 p-3 rounded-xl space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 text-sm font-bold w-6 text-center">{idx + 1}</span>
+                <input
+                  type="text"
+                  value={student.name}
+                  onChange={(e) => handleChange(idx, 'name', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 text-sm"
+                  placeholder="姓名"
+                />
+                <button
+                  onClick={() => handleRemove(idx)}
+                  className="text-slate-300 hover:text-red-400 transition-colors p-1"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div className="flex gap-2 pl-8">
+                <input
+                  type="email"
+                  value={student.email}
+                  onChange={(e) => handleChange(idx, 'email', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 text-sm"
+                  placeholder="Email（選填）"
+                />
+                <input
+                  type="text"
+                  value={student.chatUserId || ''}
+                  onChange={(e) => handleChange(idx, 'chatUserId', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 text-sm"
+                  placeholder="Chat ID（選填）"
+                />
+              </div>
             </div>
           ))}
           <button
