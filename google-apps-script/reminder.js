@@ -28,7 +28,10 @@ var CONFIG = {
   ROSTER_URL: 'https://chia310.github.io/duty-roster/',
 
   // 寄件人顯示名稱
-  SENDER_NAME: '值日生系統'
+  SENDER_NAME: '值日生系統',
+
+  // Google Chat Webhook URL
+  CHAT_WEBHOOK_URL: 'https://chat.googleapis.com/v1/spaces/AAQAqWtRO_Y/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=d74tU7U9tJR03Tr9bQ-bur1uqgb5on9L8oCLVAYQLRQ'
 };
 
 // ============ 主要函數 ============
@@ -94,6 +97,8 @@ function sendMondayReminder() {
   });
 
   Logger.log('週一提醒已寄出給 ' + student.name + '（' + student.email + '）');
+
+  sendChatCard(student.name, weekRange, false);
 }
 
 /**
@@ -128,6 +133,8 @@ function sendFridayReminder() {
   });
 
   Logger.log('週五提醒已寄出給 ' + student.name + '（' + student.email + '）');
+
+  sendChatCard(student.name, getThisWeekRange(), true);
 }
 
 // ============ 輔助函數 ============
@@ -213,6 +220,64 @@ function getThisWeekRange() {
   return (monday.getMonth() + 1) + '/' + monday.getDate() +
     ' ~ ' +
     (sunday.getMonth() + 1) + '/' + sunday.getDate();
+}
+
+/**
+ * 發送 Google Chat 卡片通知
+ */
+function sendChatCard(studentName, weekRange, isFriday) {
+  var title = isFriday ? '週五大掃除提醒' : '本週值日生提醒';
+  var subtitle = weekRange;
+  var body = isFriday
+    ? studentName + '，記得今天五點前處理垃圾與確認公共空間！'
+    : studentName + '，本週（' + weekRange + '）輪到你擔任值日生！';
+  var tasks = isFriday
+    ? '1. 五點前將公共垃圾（辦公室＋廁所）拿到樓梯間，往五樓方向移動的垃圾集中處。\n2. 確認公共空間狀況，是否有紙箱需要回收或協助清理。'
+    : '1. 本週五下午五點前，將公共垃圾（辦公室＋廁所）拿到樓梯間，往五樓方向移動的垃圾集中處。\n2. 確認公共空間狀況，是否有紙箱需要回收或協助清理。';
+
+  var card = {
+    cardsV2: [{
+      cardId: 'duty-reminder',
+      card: {
+        header: {
+          title: title,
+          subtitle: subtitle
+        },
+        sections: [
+          {
+            widgets: [{
+              textParagraph: { text: '<b>' + body + '</b>' }
+            }]
+          },
+          {
+            header: '本週任務',
+            widgets: [{
+              textParagraph: { text: tasks }
+            }]
+          },
+          {
+            widgets: [{
+              buttonList: {
+                buttons: [{
+                  text: '查看值日生系統',
+                  onClick: { openLink: { url: CONFIG.ROSTER_URL } }
+                }]
+              }
+            }]
+          }
+        ]
+      }
+    }]
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(card)
+  };
+
+  UrlFetchApp.fetch(CONFIG.CHAT_WEBHOOK_URL, options);
+  Logger.log('Chat 卡片已發送：' + studentName + '（' + (isFriday ? '週五' : '週一') + '）');
 }
 
 /**
