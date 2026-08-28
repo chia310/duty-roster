@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { formatDateKey } from '../utils/dateHelpers';
 import type { Student } from '../types';
 
 const DEFAULT_STUDENTS: Student[] = [
@@ -24,7 +25,7 @@ interface FirestoreData {
   reminder: string;
   startDate: Date;
   loading: boolean;
-  updateStudents: (students: Student[]) => Promise<void>;
+  updateStudents: (students: Student[], startDate?: Date) => Promise<void>;
   updateRules: (rules: string[]) => Promise<void>;
   updateReminder: (reminder: string) => Promise<void>;
   updateStartDate: (date: Date) => Promise<void>;
@@ -70,8 +71,14 @@ export function useFirestore(): FirestoreData {
     };
   }, []);
 
-  const updateStudents = async (newStudents: Student[]) => {
-    await setDoc(CONFIG_DOC, { students: newStudents.map(s => ({ name: s.name, email: s.email, chatUserId: s.chatUserId || '' })) }, { merge: true });
+  // newStartDate 用來在名單人數變動時同步位移錨點日，兩個欄位必須一起寫入，
+  // 否則中間會有一小段時間名單是新的、錨點是舊的，提醒信就會寄給錯的人。
+  const updateStudents = async (newStudents: Student[], newStartDate?: Date) => {
+    const payload: { students: Student[]; startDate?: string } = {
+      students: newStudents.map(s => ({ name: s.name, email: s.email, chatUserId: s.chatUserId || '' }))
+    };
+    if (newStartDate) payload.startDate = formatDateKey(newStartDate);
+    await setDoc(CONFIG_DOC, payload, { merge: true });
   };
 
   const updateRules = async (newRules: string[]) => {
@@ -83,7 +90,7 @@ export function useFirestore(): FirestoreData {
   };
 
   const updateStartDate = async (date: Date) => {
-    await updateDoc(CONFIG_DOC, { startDate: date.toISOString().split('T')[0] });
+    await updateDoc(CONFIG_DOC, { startDate: formatDateKey(date) });
   };
 
   return { students, rules, reminder, startDate, loading, updateStudents, updateRules, updateReminder, updateStartDate };

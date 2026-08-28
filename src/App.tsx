@@ -7,6 +7,7 @@ import { Sidebar } from './components/Sidebar';
 import type { UpcomingDuty } from './components/Sidebar';
 import { EditModal } from './components/EditModal';
 import { getWeeksDiff, getWeekRangeString } from './utils/dateHelpers';
+import { getDutyIndex, getRealignedStartDate } from './utils/rotation';
 import { useAuth } from './hooks/useAuth';
 import { useFirestore } from './hooks/useFirestore';
 import type { Student } from './types';
@@ -25,16 +26,19 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSaveStudents = async (newList: Student[]) => {
-    await updateStudents(newList);
-  };
-
   // baseDate 是固定錨點日（第一位值日生的週一），從 Firestore 讀取
   const baseDate = useMemo(() => {
     const d = new Date(startDate);
     d.setHours(0, 0, 0, 0);
     return d;
   }, [startDate]);
+
+  const handleSaveStudents = async (newList: Student[]) => {
+    // 加人／減人會改變 (週數 % 人數) 的除數，本週與已排定的未來週次都會整批位移。
+    // 存檔時一併把錨點日往後推整數週，讓既有的輪值順序維持不變。
+    const realignedStartDate = getRealignedStartDate(students, newList, baseDate, now);
+    await updateStudents(newList, realignedStartDate);
+  };
 
   const stateData = useMemo(() => {
     if (students.length === 0) return null;
@@ -47,7 +51,7 @@ function App() {
 
     // Current duty data
     const currentWeekRange = getWeekRangeString(baseDate, weeksElapsed);
-    const currentIndex = ((weeksElapsed % students.length) + students.length) % students.length;
+    const currentIndex = getDutyIndex(weeksElapsed, students.length);
     const currentStudentName = students[currentIndex].name;
 
     // Friday date (Monday + 4 days)
@@ -59,7 +63,7 @@ function App() {
     const upcomingList: UpcomingDuty[] = [];
     for (let i = 1; i <= 10; i++) {
         const targetWeek = weeksElapsed + i;
-        const studentIndex = ((targetWeek % students.length) + students.length) % students.length;
+        const studentIndex = getDutyIndex(targetWeek, students.length);
         upcomingList.push({
             range: getWeekRangeString(baseDate, targetWeek),
             name: students[studentIndex].name

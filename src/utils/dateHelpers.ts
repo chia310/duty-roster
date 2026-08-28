@@ -14,6 +14,12 @@ export const getWeeksDiff = (date1: Date, date2: Date): number => {
   return Math.floor((date1.getTime() - date2.getTime()) / oneWeek);
 };
 
+// 以「當地時區」的年月日組出 YYYY-MM-DD。
+// 不能用 toISOString()：它會先轉成 UTC，在 UTC+8 會退成前一天，
+// 讓錨點日從星期一變成星期日，週次區間與 Apps Script 的計算都會跟著跑掉。
+export const formatDateKey = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const getWeekRangeString = (baseDate: Date, weeksFromBase: number): string => {
   const start = new Date(baseDate);
   start.setDate(start.getDate() + weeksFromBase * 7);
