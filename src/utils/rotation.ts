@@ -12,7 +12,7 @@ const isSameStudent = (a: Student, b: Student): boolean =>
 
 /**
  * 名單人數一變動，(週數 % 人數) 的除數就跟著變，本週和已排定的未來週次會整批位移。
- * 這裡把錨點日往後推整數週，讓本週的值日生在新名單下仍是同一個人；
+ * 這裡把錨點日往後推整數週，讓已排定的週次維持原本的人；
  * 其他人的相對順序不變，新加入的人自然排在循環的最後。
  *
  * 只移動整數週，錨點仍落在星期一，週次區間顯示與 Apps Script 端的計算都不受影響。
@@ -24,18 +24,28 @@ export const getRealignedStartDate = (
   startDate: Date,
   now: Date
 ): Date | undefined => {
+  // 人數沒變代表管理員是刻意調整順序（例如連假換班），那正是他要的結果，不能對齊回去
+  if (oldList.length === newList.length) return undefined;
   if (oldList.length === 0 || newList.length === 0) return undefined;
 
   const weeksElapsed = getWeeksDiff(now, startDate);
-  const currentStudent = oldList[getDutyIndex(weeksElapsed, oldList.length)];
 
-  const nextIndex = newList.findIndex((s) => isSameStudent(s, currentStudent));
-  if (nextIndex === -1) return undefined; // 本週值日生被移出名單，無從對齊
+  // 從本週往後找第一個還留在名單裡的人，以那一週為基準對齊。
+  // 本週值日生剛好被移出名單時，至少讓後面已經公告出去的週次維持不變。
+  for (let offset = 0; offset < oldList.length; offset++) {
+    const week = weeksElapsed + offset;
+    const student = oldList[getDutyIndex(week, oldList.length)];
 
-  const weeksToShift = getDutyIndex(weeksElapsed - nextIndex, newList.length);
-  if (weeksToShift === 0) return undefined; // 本週人選沒變，錨點不用動
+    const index = newList.findIndex((s) => isSameStudent(s, student));
+    if (index === -1) continue;
 
-  const realigned = new Date(startDate);
-  realigned.setDate(realigned.getDate() + weeksToShift * 7);
-  return realigned;
+    const weeksToShift = getDutyIndex(week - index, newList.length);
+    if (weeksToShift === 0) return undefined; // 人選沒變，錨點不用動
+
+    const realigned = new Date(startDate);
+    realigned.setDate(realigned.getDate() + weeksToShift * 7);
+    return realigned;
+  }
+
+  return undefined; // 整份名單都換掉了，無從對齊
 };
