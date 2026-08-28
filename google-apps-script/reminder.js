@@ -8,9 +8,10 @@
  * 4. 執行 setupTriggers() 函數來建立定時觸發器
  * 5. 授權存取 Gmail 和外部服務
  *
- * 觸發時間：
+ * 觸發時間（時區依 Apps Script 專案設定，應為 Asia/Taipei）：
  * - 每週一 07:00 寄出「本週值日生提醒」給當週值日生
  * - 每週五 07:00 寄出「週五大掃除提醒」給當週值日生
+ * - 每週五 15:45–16:15 於 Google Chat 再次提醒當週值日生（不寄 email）
  *
  * 資料格式：
  * Firestore config/main.students 為物件陣列：
@@ -60,7 +61,15 @@ function setupTriggers() {
     .atHour(7)
     .create();
 
-  Logger.log('觸發器已建立：每週一、週五 07:00');
+  // 每週五 15:45–16:15 之間（16:00 ± 15 分鐘，僅 Google Chat 再次提醒）
+  ScriptApp.newTrigger('sendFridayAfternoonChatReminder')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.FRIDAY)
+    .atHour(16)
+    .nearMinute(0)
+    .create();
+
+  Logger.log('觸發器已建立：週一 07:00、週五 07:00、週五 15:45–16:15');
 }
 
 /**
@@ -133,6 +142,22 @@ function sendFridayReminder() {
   });
 
   Logger.log('週五提醒已寄出給 ' + student.name + '（' + student.email + '）');
+
+  sendChatCard(student.name, student.chatUserId || '', getThisWeekRange(), true);
+}
+
+/**
+ * 週五下午提醒 — 僅發送 Google Chat 卡片（不寄 email）
+ */
+function sendFridayAfternoonChatReminder() {
+  var data = getFirestoreConfig();
+  if (!data) return;
+
+  var student = getCurrentDutyStudent(data.students, data.startDate);
+  if (!student) {
+    Logger.log('當週無值日生，跳過週五下午 Chat 提醒。');
+    return;
+  }
 
   sendChatCard(student.name, student.chatUserId || '', getThisWeekRange(), true);
 }
@@ -281,6 +306,39 @@ function sendChatCard(studentName, studentChatId, weekRange, isFriday) {
 
   UrlFetchApp.fetch(CONFIG.CHAT_WEBHOOK_URL, options);
   Logger.log('Chat 卡片已發送：' + studentName + '（' + (isFriday ? '週五' : '週一') + '）');
+}
+
+/**
+ * 查詢用：以 email 找出該同仁的 Google Chat user ID
+ *
+ * 使用前需在 Apps Script 編輯器左側「服務」加入：
+ * - People API（識別碼 People）  ← 一般帳號即可使用
+ * 若你是 Workspace 管理員，也可改加入 Admin SDK API（識別碼 AdminDirectory），
+ * 直接用 AdminDirectory.Users.get(email).id 取得。
+ *
+ * 執行後看「執行記錄」，把 chatUserId 填進值日生系統的編輯視窗即可。
+ */
+function lookupChatUserId() {
+  var email = 'ken.chen@orangeapple.co';
+
+  var result = People.People.searchDirectoryPeople({
+    query: email,
+    readMask: 'names,emailAddresses',
+    sources: ['DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE']
+  });
+
+  if (!result.people || result.people.length === 0) {
+    Logger.log('查無此人：' + email + '（確認帳號已建立且在同一個 Workspace 網域）');
+    return;
+  }
+
+  for (var i = 0; i < result.people.length; i++) {
+    var person = result.people[i];
+    var emails = (person.emailAddresses || []).map(function(e) { return e.value; });
+    var name = person.names && person.names[0] ? person.names[0].displayName : '';
+    var id = person.resourceName.replace('people/', '');
+    Logger.log(name + ' / ' + emails.join(', ') + ' → chatUserId = ' + id);
+  }
 }
 
 /**
